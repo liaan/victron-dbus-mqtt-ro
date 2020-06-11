@@ -15,34 +15,28 @@ from lxml import etree
 from collections import OrderedDict
 
 # victron dbus-mqtt
-
-# Victron packages
 AppDir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, os.path.join(AppDir,'dbus-mqtt'))
-from mqtt_gobject_bridge import MqttGObjectBridge
 import dbus_mqtt
 
 sys.path.insert(1, os.path.join(AppDir,'dbus-mqtt', 'ext', 'velib_python'))
-from logger import setup_logging
-from ve_utils import get_vrm_portal_id, exit_on_error, wrap_dbus_value, unwrap_dbus_value
-
-from mosquitto_bridge_registrator import MosquittoBridgeRegistrator
-sys.path.insert(1, os.path.join(AppDir, 'ext', 'velib_python'))
-
-
-SoftwareVersion = '0'
-ServicePrefix = 'com.victronenergy.'
-VeDbusInvalid = dbus.Array([], signature=dbus.Signature('i'), variant_level=1)
-blocked_items = {'vebus', u'/Interfaces/Mk2/Tunnel'}
+SoftwareVersion = '00.1'
 
 
 class DbusMqtt_ro(dbus_mqtt.DbusMqtt) :
 	def __init__(self, mqtt_server=None, ca_cert=None, user=None, passwd=None, dbus_address=None
-				,topic_prefix = False,mqtt_retain = False): 
+				,topic_prefix = False,mqtt_retain = False,mqtt_lwt = True): 
+		
 		##LWT Topic
-		self.lwt_topic = topic_prefix+ '{}/LWT'.format(get_vrm_portal_id());		
+		if mqtt_lwt:
+			self.lwt_topic = '{}/LWT'.format(dbus_mqtt.get_vrm_portal_id());		
+		else:
+			self.lwt_topic = ''
+			
 		self._topic_prefix = topic_prefix
 		self._use_json_values = False
+		
+		
 		##Init supper
 		super(DbusMqtt_ro, self).__init__(mqtt_server=mqtt_server, ca_cert=ca_cert, user=user,
 		passwd=passwd, dbus_address=dbus_address		
@@ -50,14 +44,14 @@ class DbusMqtt_ro(dbus_mqtt.DbusMqtt) :
 		
 	def stop(self):
 		print "Cleaning up"
-		print self._client
+		#print self._client
 		self._publish_all(reset=True)
 		
 
 	def _init_mqtt(self):
 		
 		if self.lwt_topic:
-			self._client.will_set(self.lwt_topic,payload="Offline")
+			self._client.will_set(self._topic_prefix+self.lwt_topic,payload="Offline")
 
 		try:
 			logging.info('[Init] Connecting to local broker')
@@ -82,6 +76,7 @@ class DbusMqtt_ro(dbus_mqtt.DbusMqtt) :
 		# Publish None when service disappears: the topic will no longer show up when subscribing.
 		# Clients which are already subscribed will receive a single message with empty payload.
 		# Some clients need value as value, not as json value, so check if set and send correct
+		
 		if reset:
 			payload = None
 		elif self._use_json_values:			
@@ -89,13 +84,29 @@ class DbusMqtt_ro(dbus_mqtt.DbusMqtt) :
 		else:
 			payload = str(value)	
 			
+		##Strip the "N"
+		topic = topic.replace('N/','')
+		
 		##Prefix the topic		
 		if self._topic_prefix:
 			topic = self._topic_prefix + topic	
+			topic = topic.replace('//','/')
+		
+		
 		
 		# Put it into the queue		
 		self.queue[topic] = payload
 
+	def _on_connect(self, client, userdata, dict, rc):
+		dbus_mqtt.DbusMqtt._on_connect(self, client, userdata, dict, rc)
+		
+		logging.info('[Connected] Result code {}'.format(rc))
+		##Im online
+		if(self.lwt_topic):			
+			self._publish(self.lwt_topic,"Online")
+		
+		# Send all values at once, because values may have changed when we were disconnected.
+		self._publish_all()
 	   
  
 
@@ -109,12 +120,14 @@ def main():
 	parser.add_argument('-b', '--dbus', default=None, help='dbus address')			
 	parser.add_argument('-t', '--topic', help='Mqtt topic publish prefix, not used for read / write',default=False)
 	parser.add_argument('-Mr', '--mqtt-retain', help='Mqtt Retain True/False',default="No")
+	parser.add_argument('-LWT', '--mqtt-lwt', help='Mqtt Retain True/False',default="Yes")
+	
 	
 	
 	args = parser.parse_args()
 
 	print("-------- dbus_mqtt, v{} is starting up --------".format(SoftwareVersion))
-	logger = setup_logging(args.debug)
+	logger = dbus_mqtt.setup_logging(args.debug)
 
 	# This allows us to use gobject code in new threads
 	gobject.threads_init()
@@ -126,14 +139,16 @@ def main():
 	##keep Alive
 	 
 	mqtt_retain = False if (args.mqtt_retain.lower() == 'no' or args.mqtt_retain.lower() =='n' or args.mqtt_retain.lower() =='0' or args.mqtt_retain.lower() =='false') else True
+	mqtt_lwt = False if (args.mqtt_lwt.lower() == 'no' or args.mqtt_lwt.lower() =='n' or args.mqtt_lwt.lower() =='0' or args.mqtt_lwt.lower() =='false') else True
 	topic_prefix = args.topic if args.topic else ''
+	
 	
 	
 	handler = DbusMqtt_ro(
 		mqtt_server=args.mqtt_server, ca_cert=args.mqtt_certificate, user=args.mqtt_user,
 		passwd=args.mqtt_password, dbus_address=args.dbus
 		,topic_prefix = topic_prefix
-		,mqtt_retain = mqtt_retain
+		,mqtt_retain = mqtt_retain,mqtt_lwt = mqtt_lwt
 		)
 
 	 
