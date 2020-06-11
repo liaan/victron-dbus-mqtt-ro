@@ -119,8 +119,8 @@ def main():
 	parser.add_argument('-c', '--mqtt-certificate', default=None, help='path to CA certificate used for SSL communication')
 	parser.add_argument('-b', '--dbus', default=None, help='dbus address')			
 	parser.add_argument('-t', '--topic', help='Mqtt topic publish prefix, not used for read / write',default=False)
-	parser.add_argument('-Mr', '--mqtt-retain', help='Mqtt Retain True/False',default="No")
-	parser.add_argument('-LWT', '--mqtt-lwt', help='Mqtt Retain True/False',default="Yes")
+	parser.add_argument('-Mr', '--mqtt-retain', help='Mqtt Retain Yes/No',default="No")
+	parser.add_argument('-LWT', '--mqtt-lwt', help='Mqtt LWT Yes/No',default="Yes")
 	
 	
 	
