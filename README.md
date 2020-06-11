@@ -3,6 +3,8 @@ Victron Dbus-mqtt  Read Only version just pushing data all the time to mqtt from
 
 dbus-mqtt 1.20 or higher needed (git pull)
 
+
+
 #### Expanded options
 * Topic prefic
 * retain
@@ -35,3 +37,5 @@ optional arguments:
                         Mqtt Retain True/False
 ```
 
+#### todo:
+Setup service scripts to make it run automigly
