@@ -1,0 +1,3 @@
+[submodule "dbus-mqtt"]
+	path = dbus-mqtt
+	url = https://github.com/victronenergy/dbus-mqtt.git
