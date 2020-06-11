@@ -32,9 +32,10 @@ optional arguments:
   -t TOPIC, --topic TOPIC
                         Mqtt topic publish prefix, not used for read / write
   -Mr MQTT_RETAIN, --mqtt-retain MQTT_RETAIN
-                        Mqtt Retain True/False
+                        Mqtt Retain Yes/No
   -LWT MQTT_LWT, --mqtt-lwt MQTT_LWT
-                        Mqtt Retain True/False
+                        Mqtt LWT Yes/No
+
 ```
 
 #### todo:
