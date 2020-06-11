@@ -39,3 +39,4 @@ optional arguments:
 
 #### todo:
 Setup service scripts to make it run automigly
+create emoncms device and topic structure to automagicly make that work as well
